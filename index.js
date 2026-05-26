@@ -10,7 +10,7 @@ const {
 
 require('dotenv').config();
 
-const client = new Client({
+client.once('clientReady', () => {
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
