@@ -10,7 +10,8 @@ const {
 
 require('dotenv').config();
 
-client.once('clientReady', () => {
+// CREATE CLIENT
+const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
@@ -19,25 +20,30 @@ client.once('clientReady', () => {
     ]
 });
 
-client.once('ready', () => {
+// BOT ONLINE
+client.once('clientReady', () => {
     console.log(`${client.user.tag} is online!`);
 });
-
 
 // SEND VERIFY PANEL COMMAND
 client.on('messageCreate', async (message) => {
 
+    // IGNORE BOT MESSAGES
+    if (message.author.bot) return;
+
+    // COMMAND
     if (message.content === '!verifypanel') {
 
         const embed = new EmbedBuilder()
-            .setColor('#ff5b00')
+            .setColor('#5865F2')
             .setTitle('🔐 Verification Required')
             .setDescription(
                 'Click the button below to verify yourself and unlock all channels.'
             )
             .setFooter({
                 text: 'Prex Optimization'
-            });
+            })
+            .setTimestamp();
 
         const verifyButton = new ButtonBuilder()
             .setCustomId('verify')
@@ -53,12 +59,12 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-
 // BUTTON SYSTEM
 client.on(Events.InteractionCreate, async interaction => {
 
     if (!interaction.isButton()) return;
 
+    // VERIFY BUTTON
     if (interaction.customId === 'verify') {
 
         try {
@@ -115,18 +121,20 @@ client.on(Events.InteractionCreate, async interaction => {
                 process.env.WELCOME_CHANNEL_ID
             );
 
+            // SEND WELCOME MESSAGE
             await welcomeChannel.send({
                 embeds: [welcomeEmbed]
             });
 
+            // REPLY TO USER
             await interaction.reply({
-                content: '✅ You are now verified!',
+                content: '✅ You are now verified and got access to all channels!',
                 ephemeral: true
             });
 
         } catch (err) {
 
-            console.log(err);
+            console.error(err);
 
             await interaction.reply({
                 content: '❌ Verification failed.',
@@ -136,4 +144,5 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
+// LOGIN BOT
 client.login(process.env.TOKEN);
