@@ -39,7 +39,10 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
     // SEND VERIFY PANEL
-    if (message.content === '!verifypanel') {
+    if (
+    message.content === '!verifypanel' &&
+    message.channel.id === process.env.VERIFY_CHANNEL_ID
+) {
 
         const embed = new EmbedBuilder()
             .setColor('#5865F2')
