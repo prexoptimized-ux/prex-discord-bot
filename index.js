@@ -5,12 +5,17 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    Events
+    Events,
+    PermissionsBitField
 } = require('discord.js');
+
+const Tesseract = require('tesseract.js');
+const axios = require('axios');
+const fs = require('fs');
 
 require('dotenv').config();
 
-// CREATE CLIENT
+// CLIENT
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -25,13 +30,15 @@ client.once('clientReady', () => {
     console.log(`${client.user.tag} is online!`);
 });
 
-// SEND VERIFY PANEL COMMAND
+// ============================================
+// VERIFY PANEL COMMAND
+// ============================================
+
 client.on('messageCreate', async (message) => {
 
-    // IGNORE BOT MESSAGES
     if (message.author.bot) return;
 
-    // COMMAND
+    // SEND VERIFY PANEL
     if (message.content === '!verifypanel') {
 
         const embed = new EmbedBuilder()
@@ -59,7 +66,10 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// BUTTON SYSTEM
+// ============================================
+// VERIFY BUTTON SYSTEM
+// ============================================
+
 client.on(Events.InteractionCreate, async interaction => {
 
     if (!interaction.isButton()) return;
@@ -126,9 +136,9 @@ client.on(Events.InteractionCreate, async interaction => {
                 embeds: [welcomeEmbed]
             });
 
-            // REPLY TO USER
+            // REPLY
             await interaction.reply({
-                content: '✅ You are now verified and got access to all channels!',
+                content: '✅ You are now verified!',
                 ephemeral: true
             });
 
@@ -144,5 +154,92 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
-// LOGIN BOT
+// ============================================
+// SUBSCRIBER CHECK SYSTEM
+// ============================================
+
+client.on('messageCreate', async (message) => {
+
+    if (message.author.bot) return;
+
+    // ONLY CHECK PROOF CHANNEL
+    if (message.channel.id !== process.env.PROOF_CHANNEL_ID) return;
+
+    // CHECK IMAGE
+    const attachment = message.attachments.first();
+
+    if (!attachment) {
+
+        await message.reply(
+            '❌ Please upload a subscription screenshot.'
+        );
+
+        return;
+    }
+
+    try {
+
+        // DOWNLOAD IMAGE
+        const response = await axios({
+            url: attachment.url,
+            method: 'GET',
+            responseType: 'arraybuffer'
+        });
+
+        fs.writeFileSync('proof.png', response.data);
+
+        // OCR SCAN
+        const result = await Tesseract.recognize(
+            'proof.png',
+            'eng'
+        );
+
+        const text = result.data.text.toLowerCase();
+
+        console.log(text);
+
+        // REQUIRED TEXT
+        const requiredChannel = 'prex optimization';
+
+        // VALID SCREENSHOT
+        if (
+            text.includes(requiredChannel) &&
+            text.includes('subscribed')
+        ) {
+
+            const subscriberRole = message.guild.roles.cache.get(
+                process.env.SUBSCRIBER_ROLE_ID
+            );
+
+            // GIVE ROLE
+            await message.member.roles.add(subscriberRole);
+
+            await message.reply(
+                '✅ You are subscribed! Free Stuff channel is now unlocked.'
+            );
+
+        } else {
+
+            // TIMEOUT 5 MINUTES
+            await message.member.timeout(
+                5 * 60 * 1000,
+                'Fake subscription proof'
+            );
+
+            await message.reply(
+                '❌ You are not subscribed. You got timeout for 5 minutes.'
+            );
+        }
+
+    } catch (err) {
+
+        console.error(err);
+
+        await message.reply(
+            '❌ Failed to analyze screenshot.'
+        );
+    }
+});
+
+// LOGIN
 client.login(process.env.TOKEN);
